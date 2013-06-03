@@ -17,6 +17,8 @@ De aptitude:
 - Instalar PostGIS 
 - Instalar Python 2.7
 - Instalar PL/Python
+- Instalar pip
+- Instalar shapely via pip
 - Ejecutar el script de instalacion de postgis.
 - Agregar como lenguaje a pl/python y ejecutar los scripts como usuario con permisos para ello.
 
