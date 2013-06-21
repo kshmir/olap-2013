@@ -1,17 +1,23 @@
-﻿drop table geomtable;
- 
-create table geomtable(the_geom geometry, id int);
- 
-SELECT st_intersects(the_geom) FROM geomtable GROUP BY id;
+﻿-- Inicialización de Tabla de Ejemplo
 
-DROP FUNCTION st_intersection(geometry, geometry) CASCADE;
+-- CREATE
+CREATE LANGUAGE plpythonu; 
+CREATE table geomtable(the_geom geometry, id int);
 
+-- DROP
+DROP TABLE geomtable;
+
+-- Punto 1: Intersects
+
+-- CREATE
+
+---- Función Python que contiene la logica
 CREATE OR REPLACE FUNCTION st_intersection(base geometry, geom geometry)
   RETURNS geometry AS
 $BODY$
  import shapely
  from shapely.wkb import loads 
- if base == None:	
+ if base == None: 
    return geom
  else:
    shape1 = loads(base.decode('hex'))
@@ -24,21 +30,28 @@ $BODY$
 ALTER FUNCTION st_intersection(geometry, geometry)
   OWNER TO postgres;
 
+---- Agregación de función
 CREATE AGGREGATE st_intersects (
   sfunc=st_intersection,
   stype=geometry,
   basetype=geometry
 );
 
-DROP FUNCTION st_nearcentroid_union(geometry, geometry) CASCADE;
-DROP FUNCTION st_nearcentroid_find(geometry) CASCADE;
+
+-- DROP de intersection e intersects
+DROP FUNCTION st_intersection(geometry, geometry) CASCADE;
+
+
+-- Punto 2: Nearcentroid
+
+---- CREATE BEGIN
 
 CREATE OR REPLACE FUNCTION st_nearcentroid_union(base geometry, geom geometry)
   RETURNS geometry AS
 $BODY$
  import shapely
  from shapely.wkb import loads 
- if base == None:	
+ if base == None: 
    return geom
  else:
    shape1 = loads(base.decode('hex'))
@@ -55,7 +68,7 @@ CREATE OR REPLACE FUNCTION st_nearcentroid_find(geom geometry)
   RETURNS geometry AS
 $BODY$
 import shapely
-from shapely.geometry import Polygon, LineString, Point
+from shapely.geometry import Polygon, LineString, Point, GeometryCollection, MultiPoint, MultiPolygon, MultiLineString
 from shapely.wkb import loads 
 from math import atan, cos, sin
 
@@ -64,11 +77,9 @@ def sign(x):
 
 def find_min_point_in_coords(minDist, minPoint, p, coords):
   for i in xrange(0,len(coords) - 1):
-    # Set of points
     p1 = coords[i]       
     p2 = coords[i+1]
 
-    # Compare all distances we have.
     dist = p.distance(LineString(([p1[0], p1[1]],[p2[0], p2[1]])))
     dist1 = p.distance(Point([p1[0], p1[1]]))
     dist2 = p.distance(Point([p2[0], p2[1]]))
@@ -100,27 +111,40 @@ def find_min_point_in_coords(minDist, minPoint, p, coords):
       # Same for Y.
       pX = dX * abs(cos(tita)) * dist + p.x;
       pY = dY * abs(sin(tita)) * dist + p.y;
-
       minPoint = Point(pX, pY)
       minDist = m
   return minDist, minPoint
 
-def nearest(p, geometry):
+def nearestInner(minDist, minPoint, p, geometry):
+  coords = None
   if isinstance(geometry, Polygon):
     coords = geometry.exterior.coords
   elif isinstance(geometry, LineString):
     coords = geometry.coords
+  elif isinstance(geometry, Point):
+    if (p.distance(geometry) < minDist):
+      return p.distance(geometry), geometry
+  elif isinstance(geometry, MultiPoint) or \
+    isinstance(geometry, MultiLineString) or \
+    isinstance(geometry, MultiPolygon) or \
+    isinstance(geometry, GeometryCollection):
+    for geom in geometry.geoms:
+      minDist, minPoint = nearestInner(minDist, minPoint, p, geom)
 
-  minDist = float('inf')
-  minPoint = None
-
-  minDist, minPoint = find_min_point_in_coords(minDist, minPoint, p, coords)
+  if coords != None:
+    minDist, minPoint = find_min_point_in_coords(minDist, minPoint, p, coords)
 
   if (hasattr(geometry, 'interiors')):
     for interior in geometry.interiors:
       minDist, minPoint = find_min_point_in_coords(minDist, minPoint, p, interior.coords)      
  
-  return minPoint
+  return minDist, minPoint
+
+def nearest(p, geometry):
+  minDist = float('inf')
+  minPoint = None
+  minDist, minPoint = nearestInner(minDist, minPoint, p, geometry)
+  return minDist, minPoint
   
 shape = loads(geom.decode('hex'))
 centroid = shape.centroid
@@ -128,20 +152,26 @@ dist = shape.distance(centroid)
 if dist == 0.0:
   return centroid
 else:
-  return nearest(centroid, shape);
+  d,p = nearest(centroid, shape)
+  return p
 $BODY$
   LANGUAGE plpythonu VOLATILE
   COST 100;
 
-CREATE AGGREGATE st_nearcentroid_ (
+CREATE AGGREGATE st_nearcentroid (
   sfunc=st_nearcentroid_union,
   stype=geometry,
   basetype=geometry,
   finalfunc=st_nearcentroid_find
 );
 
-SELECT st_nearcentroid_(the_geom) FROM geomtable GROUP BY id;
+---- CREATE END
 
+---- DROP
+DROP FUNCTION st_nearcentroid_union(geometry, geometry) CASCADE;
+DROP FUNCTION st_nearcentroid_find(geometry) CASCADE;
+
+---- DEMO DATA
 
 -- Intersecting everything gives empty
 INSERT INTO geomtable values('POINT (-289.70236371968144 -41.60196343188081)',1);
@@ -167,3 +197,5 @@ INSERT INTO geomtable values('POLYGON ((-188.57246690853336 743.0182296002788, -
 INSERT INTO geomtable values('POLYGON ((-150.4275206472997 464.74771998963985, -280.4955341282276 464.74771998963985, -327.3950582199083 506.0193011903189, -181.06854305386443 506.644628178208, -150.4275206472997 464.74771998963985))',1);
 INSERT INTO geomtable values('POLYGON ((-340.5269249655789 488.5101455294248, -301.1313247285671 518.5258409481004, -368.04131243269825 572.9292888944501, -421.19410640326976 551.6681713062214, -438.7032620641639 512.2725710692097, -408.06223965759915 477.87958673531045, -340.5269249655789 488.5101455294248))',1);
 INSERT INTO geomtable values('POLYGON ((-428.6980302579387 526.6550917906584, -377.4212172510344 531.032380705882, -366.79065845692014 591.0637715432333, -391.8037379724832 604.1956382889039, -419.3181254396025 604.1956382889039, -464.341668567616 588.562463591677, -464.9669955555051 541.6629394999962, -428.6980302579387 526.6550917906584))',1);
+
+---- END DEMO DATA
