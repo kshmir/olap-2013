@@ -44,30 +44,48 @@ def find_min_point_in_coords(minDist, minPoint, p, coords):
       # Same for Y.
       pX = dX * abs(cos(tita)) * dist + p.x;
       pY = dY * abs(sin(tita)) * dist + p.y;
-
       minPoint = Point(pX, pY)
       minDist = m
   return minDist, minPoint
 
-def nearest(p, geometry):
+def nearestInner(minDist, minPoint, p, geometry):
+  coords = None
   if isinstance(geometry, Polygon):
     coords = geometry.exterior.coords
   elif isinstance(geometry, LineString):
     coords = geometry.coords
+  elif isinstance(geometry, Point):
+    if (p.distance(geometry) < minDist):
+      return p.distance(geometry), geometry
+  elif isinstance(geometry, MultiPoint) or \
+    isinstance(geometry, MultiLineString) or \
+    isinstance(geometry, MultiPolygon) or \
+    isinstance(geometry, GeometryCollection):
+    for geom in geometry.geoms:
+      minDist, minPoint = nearestInner(minDist, minPoint, p, geom)
 
-  minDist = float('inf')
-  minPoint = None
-
-  minDist, minPoint = find_min_point_in_coords(minDist, minPoint, p, coords)
+  if coords != None:
+    minDist, minPoint = find_min_point_in_coords(minDist, minPoint, p, coords)
 
   if (hasattr(geometry, 'interiors')):
     for interior in geometry.interiors:
       minDist, minPoint = find_min_point_in_coords(minDist, minPoint, p, interior.coords)      
  
-  return minPoint
+  return minDist, minPoint
+
+def nearest(p, geometry):
+  minDist = float('inf')
+  minPoint = None
+  minDist, minPoint = nearestInner(minDist, minPoint, p, geometry)
+  return minDist, minPoint
 
 
-point = Point(5,-1000)
-geom = Polygon([(0,0),(10,0), (5,-5)])
+point = Point(50,-60)
+geom = MultiPoint([(0, 0), (1, 1), (1,2), (2,2)])
+p1 = Polygon([(0,0),(10,0), (5,-5)])
+p2 = Polygon([(100,100),(100,120), (50, -50)])
+geom = MultiPolygon([p1,p2])
 
-print nearest(point, geom)
+minDist, minPoint = nearest(point, geom)
+
+print minPoint
