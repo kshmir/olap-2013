@@ -80,11 +80,11 @@ def nearest(p, geometry):
   return minDist, minPoint
 
 
-point = Point(50,-60)
+point = Point(40, -20)
 geom = MultiPoint([(0, 0), (1, 1), (1,2), (2,2)])
 p1 = Polygon([(0,0),(10,0), (5,-5)])
 p2 = Polygon([(100,100),(100,120), (50, -50)])
-geom = MultiPolygon([p1,p2])
+geom = p2.union(geom).union(p1)
 
 minDist, minPoint = nearest(point, geom)
 
