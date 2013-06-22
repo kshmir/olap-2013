@@ -21,9 +21,16 @@ Este repositorio contiene algunos datos de ejemplo y los scripts programados en 
 - Una vez instalados plpythonu, python y shapely hay que ver el punto 3
 
 
-2. En windows:
+2. En Windows:
 
-Falta ver como..
+- Instalar PostgreSQL 9.0/9.1/9.2 (32/64 bits) (Recomendado 9.0)
+- Instalar PostGIS
+- Ejecutar el script de instalacion de postgis.
+- Instalar python 2.6: (32 bits: http://www.python.org/ftp/python/2.6/python-2.6.msi, 64 bits: http://www.python.org/ftp/python/2.6/python-2.6.amd64.msi)
+- Instalar shapely: (32 bits: https://pypi.python.org/packages/2.6/S/Shapely/Shapely-1.2.17.win32-py2.6.exe#md5=88669f37acf9969befaa3ec6a96a0e74, 64 bits: https://pypi.python.org/packages/2.6/S/Shapely/Shapely-1.2.17.win-amd64-py2.6.exe#md5=c950fd3cb1acfc85ca0d54036819284a)
+- Copiar la libreria libpython.dll de C:/Python26/ a la carpeta libs y la carpeta bin de la instalación de PostgreSQL
+- Todas las librerias deben ser siempre de 32 o 64 bits.
+- En el caso de 9.1 y 9.2, utilizar (este dll)[http://cl.ly/1c1b1l0d380G] y copiarlo en la carpeta libs de postgresql.
 
 3. Común:
 
