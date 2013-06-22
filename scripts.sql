@@ -61,8 +61,6 @@ $BODY$
 $BODY$
   LANGUAGE plpythonu VOLATILE
   COST 100;
-ALTER FUNCTION st_intersection(geometry, geometry)
-  OWNER TO postgres;
 
 CREATE OR REPLACE FUNCTION st_nearcentroid_find(geom geometry)
   RETURNS geometry AS
